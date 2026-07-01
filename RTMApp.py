@@ -687,8 +687,6 @@ def main():
         # (Application logic remains structured as original...)
         # Note: All helper functions updated above, and state flow remains consistent.
         st.write("Cấu hình đã được cập nhật thành công (20 ngày, không T7, tối ưu hóa Open-Start).")
-        st.info("👈 Chọn tác vụ thực hiện ở thanh bên trái")
-
 if __name__ == "__main__":
     main()
     
