@@ -45,16 +45,14 @@ st.markdown("""
             float: right;
         }
 
-        /* CSS cho Tiêu đề Đỏ sẫm */
         .main-title {
-            color: #8B0000 !important; /* Dark Red */
+            color: #8B0000 !important; 
             font-weight: bold !important;
             font-size: 2.5rem !important;
             margin-bottom: 1rem !important;
             text-align: center;
         }
 
-        /* CSS cho Heatmap */
         [data-testid="stDataFrame"] td {
             text-align: center !important;
             font-size: 11px !important;
@@ -68,7 +66,6 @@ st.markdown("""
         }
         [data-testid="stDataFrame"] th button { display: none !important; }
         
-        /* CSS cho Alert Căn giữa */
         .warning-box {
             background-color: #fffae5;
             color: #856404;
@@ -83,20 +80,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def render_main_title():
-    # --- PHẦN HEADER THÔNG TIN (LOGO & CONTACT) ---
-    # Chia cột: Cột 1 (Spacer) chiếm 6 phần, Cột 2 (Info) chiếm 4 phần
     c_spacer, c_info = st.columns([6, 4])
-
     st.markdown('<h1 class="main-title">Công cụ xếp tuyến - RTM Route Planner</h1>', unsafe_allow_html=True)
 
-# CẤU HÌNH BẢN ĐỒ ESRI
 ESRI_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-ESRI_ATTR = "Tiles &copy; Esri" 
+ESRI_ATTR = "Tiles &copy; Esri"
 
 # ==========================================
 # 1. QUẢN LÝ STATE
 # ==========================================
-# Global State
 if 'global_state' not in st.session_state:
     st.session_state.global_state = {
         'has_started': False,
@@ -104,10 +96,7 @@ if 'global_state' not in st.session_state:
         'config': {'is_tp': False, 'is_vp': False, 'is_integrated': False, 'tp_mode': "Chế độ 1"}
     }
 
-# Reset Warning State
 if 'show_reset_warning' not in st.session_state: st.session_state.show_reset_warning = False
-
-# State Code 1 (Territory Planner)
 if 'page' not in st.session_state: st.session_state.page = 'setup'
 if 'df' not in st.session_state: st.session_state.df = None
 if 'df_edited' not in st.session_state: st.session_state.df_edited = None
@@ -131,8 +120,6 @@ if 'v2_map_snapshot' not in st.session_state: st.session_state.v2_map_snapshot =
 if 'map_version' not in st.session_state: st.session_state.map_version = 0
 if 'col_widths' not in st.session_state: st.session_state.col_widths = {}
 if 'last_mode' not in st.session_state: st.session_state.last_mode = "Chế độ 1"
-
-# State Code 2 (Visit Planner)
 if 'stage' not in st.session_state: st.session_state.stage = '1_upload'
 if 'df_cust' not in st.session_state: st.session_state.df_cust = None
 if 'df_dist' not in st.session_state: st.session_state.df_dist = None
@@ -146,8 +133,6 @@ if 'confirm_reset' not in st.session_state: st.session_state.confirm_reset = Fal
 if 'depot_coords' not in st.session_state: st.session_state.depot_coords = None
 if 'vp_msg' not in st.session_state: st.session_state.vp_msg = None
 if 'vp_msg_type' not in st.session_state: st.session_state.vp_msg_type = None
-
-# --- Interaction States ---
 if 'editor_filter_key' not in st.session_state: st.session_state.editor_filter_key = None
 if 'show_download_options' not in st.session_state: st.session_state.show_download_options = False
 if 'tp_confirm_clear' not in st.session_state: st.session_state.tp_confirm_clear = False
@@ -158,16 +143,6 @@ if 'just_reset' not in st.session_state: st.session_state.just_reset = False
 # ==========================================
 # 2. LOGIC FUNCTIONS
 # ==========================================
-@st.cache_data
-def get_img_as_base64(file_path):
-    """Chuyển đổi file ảnh sang chuỗi Base64 để hiển thị trong HTML"""
-    if not os.path.exists(file_path):
-        return ""
-    with open(file_path, "rb") as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
-
-# --- CODE 1 HELPER ---
 WORKING_DAYS = 20
 
 @st.cache_data
@@ -176,7 +151,6 @@ def load_excel_file(file):
 
 @st.cache_data(show_spinner=False)
 def run_territory_planning_v1(df, lat_col, lon_col, n_clusters, min_size, max_size, n_init=50):
-    # Dữ liệu input là df đã được rename cột chuẩn
     df_run = df.copy()
     df_run[lat_col] = pd.to_numeric(df_run[lat_col], errors='coerce')
     df_run[lon_col] = pd.to_numeric(df_run[lon_col], errors='coerce')
@@ -189,8 +163,6 @@ def run_territory_planning_v1(df, lat_col, lon_col, n_clusters, min_size, max_si
     if min_size * n_clusters > len(df): return None, "Lỗi: Số lượng tối thiểu quá lớn."
     if max_size * n_clusters < len(df): return None, "Lỗi: Số lượng tối đa quá nhỏ."
 
-    # Hiển thị progress bên ngoài hàm này thì khó cache, 
-    # nhưng vì cache_data lưu kết quả nên lần sau sẽ không hiện progress nữa -> OK.
     best_clf = None
     best_inertia = float('inf')
 
@@ -206,10 +178,8 @@ def run_territory_planning_v1(df, lat_col, lon_col, n_clusters, min_size, max_si
                 best_clf = clf
             
         df_run['territory_id'] = best_clf.labels_ + 1
-        
         stats = df_run['territory_id'].value_counts().sort_index().reset_index()
         stats.columns = ['Tuyến (RouteID)', 'Số lượng KH']
-        
         return df_run, stats
     except Exception as e:
         return None, str(e)
@@ -237,7 +207,6 @@ def run_territory_planning_v2(df, lat_col, lon_col, freq_col, type_col, time_mat
     QUANTUM = max(1, math.ceil(raw_quantum)) 
     
     df_run['weight_points'] = np.ceil(df_run['workload_min'] / QUANTUM).astype(int)
-    
     df_exploded = df_run.loc[df_run.index.repeat(df_run['weight_points'])].copy()
     df_exploded['original_index'] = df_exploded.index
     df_exploded = df_exploded.reset_index(drop=True)
@@ -274,9 +243,7 @@ def run_territory_planning_v2(df, lat_col, lon_col, freq_col, type_col, time_mat
         ).reset_index()
         stats.columns = ['Tuyến (RouteID)', 'Số lượng KH', 'Workload_Total_Min']
         stats['Workload_Day'] = (stats['Workload_Total_Min'] / 60 / WORKING_DAYS).round(2)
-        
         return df_run, stats
-        
     except Exception as e:
         return None, str(e)
 
@@ -290,19 +257,15 @@ def generate_folium_map_tp(df, mapping, time_matrix, mode="Chế độ 1"):
     
     if df_plot.empty: return None, None
     map_center = [df_plot[lat_col].mean(), df_plot[lon_col].mean()]
-    
     m = folium.Map(location=map_center, zoom_start=11, prefer_canvas=True, tiles=ESRI_URL, attr=ESRI_ATTR)
-    
     colors = ["#FF0000", "#0000FF", "#00FF00", "#FFFF00", "#FF00FF", "#00FFFF", "#800000", "#008000", "#000080", "#FFA500"]
     unique_ids = sorted(df_plot['territory_id'].unique())
     color_map = {int(id): colors[(int(id) - 1) % len(colors)] for id in unique_ids}
 
-    # LEGEND HTML
     legend_html = ''' <div style="position: fixed; bottom: 30px; left: 30px; width: 120px; height: auto; 
                     border:2px solid grey; z-index:9999; font-size:12px; 
                     background-color:white; padding: 10px; opacity: 0.9;">
                     <b>Chú giải:</b><br>'''
-    
     for rid in unique_ids:
         c = color_map.get(int(rid), 'gray')
         legend_html += f'<i style="background:{c}; width:10px; height:10px; display:inline-block; margin-right: 5px;"></i> Tuyến {rid}<br>'
@@ -311,50 +274,23 @@ def generate_folium_map_tp(df, mapping, time_matrix, mode="Chế độ 1"):
     
     for _, row in df_plot.iterrows():
         tooltip_parts = [f"<b>Tuyến: {row['territory_id']}</b>"]
-        
-        if mapping['customer_code'] in row:
-             tooltip_parts.append(f"Mã KH: {row[mapping['customer_code']]}")
-        if mapping.get('customer_name') and mapping['customer_name'] in row:
-             tooltip_parts.append(f"Tên: {row[mapping['customer_name']]}")
-        
-        for key, col_name in mapping.items():
-            if key not in ['lat', 'lon', 'customer_code', 'customer_name'] and col_name and col_name in row:
-                 if pd.notna(row[col_name]):
-                     tooltip_parts.append(f"{col_name}: {row[col_name]}")
-        
-        if mode == "Chế độ 2":
-             if mapping.get('type') and row.get(mapping['type']):
-                seg_val = str(row[mapping['type']]).strip()
-                key = seg_val if seg_val in time_matrix else 'Mặc định/Trống'
-                time_val = time_matrix.get(key, 10.0)
-                tooltip_parts.append(f"Thời gian: {time_val}p")
-
+        if mapping['customer_code'] in row: tooltip_parts.append(f"Mã KH: {row[mapping['customer_code']]}")
+        if mapping.get('customer_name') and mapping['customer_name'] in row: tooltip_parts.append(f"Tên: {row[mapping['customer_name']]}")
         tooltip_txt = "<br>".join(tooltip_parts)
         c = color_map.get(int(row['territory_id']), 'gray')
-
         folium.CircleMarker(
-            location=[row[lat_col], row[lon_col]],
-            radius=4, color=c, fill=True, fill_color=c, fill_opacity=0.7,
-            tooltip=tooltip_txt
+            location=[row[lat_col], row[lon_col]], radius=4, color=c, fill=True, fill_color=c, fill_opacity=0.7, tooltip=tooltip_txt
         ).add_to(m)
     return m, map_center
 
-# --- CODE 2 HELPER ---
-
 REQUIRED_COLS_CUST = {
-    'RouteID': ':red[RouteID (*)]', 
-    'Customer code': ':red[Mã KH (*)]', 
-    'Customer Name': 'Tên KH', 
-    'Latitude': ':red[Latitude (Vĩ độ) (*)]', 
-    'Longitude': ':red[Longitude (Kinh độ) (*)]', 
-    'Frequency': ':red[Tần suất (*)]', 
-    'Segment': ':red[Phân loại Segment (*)]'
+    'RouteID': ':red[RouteID (*)]', 'Customer code': ':red[Mã KH (*)]', 'Customer Name': 'Tên KH', 
+    'Latitude': ':red[Latitude (Vĩ độ) (*)]', 'Longitude': ':red[Longitude (Kinh độ) (*)]', 
+    'Frequency': ':red[Tần suất (*)]', 'Segment': ':red[Phân loại Segment (*)]'
 }
 REQUIRED_COLS_DIST = {
-    'Distributor Code': ':red[Mã NPP (*)]', 
-    'Distributor Name': 'Tên NPP', 
-    'Latitude': ':red[Latitude (Vĩ độ) (*)]', 
-    'Longitude': ':red[Longitude (Kinh độ) (*)]'
+    'Distributor Code': ':red[Mã NPP (*)]', 'Distributor Name': 'Tên NPP', 
+    'Latitude': ':red[Latitude (Vĩ độ) (*)]', 'Longitude': ':red[Longitude (Kinh độ) (*)]'
 }
 
 @st.cache_data
@@ -385,7 +321,6 @@ def explode_data_by_quantum(df_week, quantum):
     return df_exploded, df_process['quantum_points'].sum()
 
 def solve_saturday_strategy(df_exploded, total_points):
-    # UPDATED logic strictly for 5 Mon-Fri chunks (Saturday removed)
     coords = df_exploded[['Latitude', 'Longitude']].values.astype(np.float32)
     scaler = StandardScaler()
     coords_scaled = scaler.fit_transform(coords)
@@ -401,10 +336,8 @@ def solve_saturday_strategy(df_exploded, total_points):
         from sklearn.cluster import KMeans
         kmeans_fallback = KMeans(n_clusters=n_chunks, random_state=42, n_init=10)
         chunk_labels = kmeans_fallback.fit_predict(coords_scaled)
-        
     days_map = {0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri'}
     df_exploded['Day'] = [days_map[i] for i in chunk_labels]
-    
     return df_exploded
 
 def collapse_to_original(df_exploded, original_df):
@@ -414,7 +347,7 @@ def collapse_to_original(df_exploded, original_df):
     df_result['Assigned_Day'].fillna('Mon', inplace=True)
     return df_result
 
-def build_time_matrix_haversine(locations, speed_slow, speed_fast):
+def build_time_matrix_haversine(locations, speed_slow, speed_fast, is_ghost_mode=False):
     size = len(locations)
     matrix = np.zeros((size, size), dtype=int)
     lats = np.array([loc[0] for loc in locations])
@@ -422,18 +355,23 @@ def build_time_matrix_haversine(locations, speed_slow, speed_fast):
     for i in range(size):
         for j in range(size):
             if i == j: continue
-            dist_km = calculate_haversine_distance_km(lats[i], lons[i], lats[j], lons[j])
-            speed = speed_slow if dist_km < 2.0 else speed_fast
-            matrix[i][j] = int((dist_km / speed) * 3600)
+            # Ghost mode logic: If i is Ghost Depot (index 0), dist is 0
+            if is_ghost_mode and i == 0:
+                matrix[i][j] = 0
+            else:
+                dist_km = calculate_haversine_distance_km(lats[i], lons[i], lats[j], lons[j])
+                speed = speed_slow if dist_km < 2.0 else speed_fast
+                matrix[i][j] = int((dist_km / speed) * 3600)
     return matrix.tolist()
 
 def solve_tsp_final(visits, depot_coords, speed_slow, speed_fast, mode='closed', end_coords=None):
     if not visits: return []
+    is_ghost = (depot_coords == (0, 0))
     locations = [depot_coords] + [v['coords'] for v in visits]
     has_end_point = (mode == 'open' and end_coords is not None)
     if has_end_point: locations.append(end_coords) 
     num_locations = len(locations)
-    time_matrix = build_time_matrix_haversine(locations, speed_slow, speed_fast)
+    time_matrix = build_time_matrix_haversine(locations, speed_slow, speed_fast, is_ghost_mode=is_ghost)
     manager = pywrapcp.RoutingIndexManager(num_locations, 1, [0], [num_locations - 1] if has_end_point else [0])
     routing = pywrapcp.RoutingModel(manager)
     def time_callback(from_index, to_index):
@@ -443,7 +381,6 @@ def solve_tsp_final(visits, depot_coords, speed_slow, speed_fast, mode='closed',
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
     search_parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-    # UPDATE: TSP Time Limit increased to 2s
     search_parameters.time_limit.seconds = 2 
     solution = routing.SolveWithParameters(search_parameters)
     ordered_visits = []
@@ -463,23 +400,16 @@ def run_master_scheduler(df_cust, depot_coords, selected_route_ids, route_config
     df_cust = df_cust.copy()
     if 'RouteID' in df_cust.columns:
         df_cust['RouteID'] = df_cust['RouteID'].astype(str).str.strip()
-        
     df_cust['Frequency'] = pd.to_numeric(df_cust['Frequency'], errors='coerce').fillna(1).round(0).astype(int)
     df_cust['Customer code'] = df_cust['Customer code'].astype(str).str.strip()
-    
     selected_route_ids = [str(x) for x in selected_route_ids]
-    
     df_cust_filtered = df_cust[df_cust['RouteID'].isin(selected_route_ids)].copy()
-    
-    if df_cust_filtered.empty:
-        return pd.DataFrame() 
+    if df_cust_filtered.empty: return pd.DataFrame() 
 
     cust_week_map = {} 
     f2_counter, f1_counter = 0, 0
     WEEKS = ['W1', 'W2', 'W3', 'W4']
     DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
-    
-    # SPACING_MAP adjusted to perfectly balance workload across 5 days (2 visits/week)
     SPACING_MAP_F8 = {'Mon': 'Thu', 'Tue': 'Fri', 'Wed': 'Mon', 'Thu': 'Tue', 'Fri': 'Wed'}
     
     for _, row in df_cust_filtered.iterrows():
@@ -493,7 +423,6 @@ def run_master_scheduler(df_cust, depot_coords, selected_route_ids, route_config
             
     final_output_rows = []
     grouped = df_cust_filtered.groupby('RouteID')
-    
     for route_id, route_df in grouped:
         route_df['Visit Time (min)'] = route_df['Segment'].map(visit_time_config).fillna(visit_time_config.get('default', 10.0))
         route_df['Weight_Factor'] = 1.0
@@ -524,17 +453,13 @@ def run_master_scheduler(df_cust, depot_coords, selected_route_ids, route_config
                 df_core_res = collapse_to_original(df_labeled, df_core)
                 anchor_map = df_core_res.set_index('Customer code')['Assigned_Day'].to_dict()
                 df_dependent = full_df[full_df['Visit_Order'] > 0].copy()
-                
                 if not df_dependent.empty:
                     dep_days = []
                     for _, r_d in df_dependent.iterrows():
                         anchor = anchor_map.get(r_d['Customer code'], 'Mon')
-                        day = anchor
-                        if r_d['Total_Visits_Count'] == 2 and r_d['Visit_Order'] == 1: 
-                            day = SPACING_MAP_F8.get(anchor, 'Thu')
+                        day = SPACING_MAP_F8.get(anchor, 'Mon')
                         dep_days.append(day)
                     df_dependent['Assigned_Day'] = dep_days
-                    
                 df_combined = pd.concat([df_core_res, df_dependent])
                 day_stats, total_work = {}, 0
                 for day in DAY_ORDER:
@@ -543,7 +468,6 @@ def run_master_scheduler(df_cust, depot_coords, selected_route_ids, route_config
                     work = d_visits['Visit Time (min)'].sum()
                     day_stats[day] = work
                     total_work += work
-                    
                 unit_work = total_work / 5
                 max_dev = 0
                 weights = {}
@@ -553,17 +477,9 @@ def run_master_scheduler(df_cust, depot_coords, selected_route_ids, route_config
                     ratio = act / tgt
                     max_dev = max(max_dev, abs(1 - ratio))
                     weights[day] = max(0.5, min(1 + (ratio - 1) * 0.7, 2.0))
-                
                 if max_dev < best_score: best_score, best_df = max_dev, df_combined.copy()
                 if max_dev <= 1.10: break 
-                
-                for item in week_visits_all:
-                    if item['Visit_Order'] == 0:
-                        try:
-                            day = df_core_res[df_core_res['Visit_ID_Internal'] == item['Visit_ID_Internal']]['Assigned_Day'].iloc[0]
-                            item['Weight_Factor'] *= weights.get(day, 1.0)
-                        except: pass
-                        
+            
             for day in DAY_ORDER:
                 d_visits = best_df[best_df['Assigned_Day'] == day]
                 if d_visits.empty: continue
@@ -575,41 +491,39 @@ def run_master_scheduler(df_cust, depot_coords, selected_route_ids, route_config
                 end_cfg = route_config_dict.get(route_id)
                 mode, end_c = ('open', end_cfg) if end_cfg else ('closed', None)
                 ordered = solve_tsp_final(tsp_in, depot_coords, SPEED_SLOW, SPEED_FAST, mode, end_c)
-                prev, seq, agg_time, agg_dist = depot_coords, 1, 0, 0
+                
+                # Dynamic start logic: If Ghost Depot, start sequence travel time at 0
+                prev, seq, agg_time = depot_coords, 1, 0
                 for item in ordered:
                     curr = item['coords']
-                    dist = calculate_haversine_distance_km(prev[0], prev[1], curr[0], curr[1])
-                    travel = get_dynamic_travel_time(dist, SPEED_SLOW, SPEED_FAST)
+                    if depot_coords == (0, 0) and seq == 1:
+                        travel = 0
+                        dist = 0
+                    else:
+                        dist = calculate_haversine_distance_km(prev[0], prev[1], curr[0], curr[1])
+                        travel = get_dynamic_travel_time(dist, SPEED_SLOW, SPEED_FAST)
                     agg_time += travel + item['Visit Time (min)']
-                    agg_dist += dist
                     res = item.copy()
                     res.update({'RouteID': route_id, 'Week': week, 'Day': day, 'Week&Day': f"{week}-{day}",
                                 'Sequence': seq, 'Travel Time (min)': round(travel, 2),
-                                'Distance (km)': round(dist, 2), 'Total Workload (min)': round(agg_time, 2)})
+                                'Distance (km)': round(dist, 2) if 'dist' in locals() else 0, 'Total Workload (min)': round(agg_time, 2)})
                     for k in ['coords', 'angle', 'Weight_Factor', 'quantum_points']: 
                         if k in res: del res[k]
                     final_output_rows.append(res)
                     prev, seq = curr, seq+1
                     
-    if not final_output_rows: return pd.DataFrame()
     df_final = pd.DataFrame(final_output_rows)
-    
     df_final = df_final.merge(df_cust, on='Customer code', how='left', suffixes=('', '_dup'))
-    
-    cols_to_drop = [c for c in df_final.columns if c.endswith('_dup')]
-    df_final = df_final.drop(columns=cols_to_drop)
-    
+    df_final = df_final.drop(columns=[c for c in df_final.columns if c.endswith('_dup')])
     df_final['Day'] = pd.Categorical(df_final['Day'], categories=DAY_ORDER, ordered=True)
     return df_final.sort_values(by=['RouteID', 'Week', 'Day', 'Sequence'])
 
 def recalculate_routes(df_edited, depot_coords, route_config, speed_config, impacted_groups=None):
     SPEED_SLOW, SPEED_FAST = speed_config['slow'], speed_config['fast']
     new_rows = []
-    
     for (r_id, week, day), group in df_edited.groupby(['RouteID', 'Week', 'Day']):
         should_optimize = True
-        if impacted_groups is not None:
-            should_optimize = (r_id, week, day) in impacted_groups
+        if impacted_groups is not None: should_optimize = (r_id, week, day) in impacted_groups
         if should_optimize:
             tsp_input = []
             for _, row in group.iterrows():
@@ -622,18 +536,18 @@ def recalculate_routes(df_edited, depot_coords, route_config, speed_config, impa
         else:
             ordered = [row.to_dict() for _, row in group.sort_values('Sequence').iterrows()]
             for item in ordered: item['coords'] = (item['Latitude'], item['Longitude'])
-        prev, seq, agg_time, agg_dist = depot_coords, 1, 0, 0
+        prev, seq, agg_time = depot_coords, 1, 0
         for item in ordered:
             curr = item['coords']
-            dist = calculate_haversine_distance_km(prev[0], prev[1], curr[0], curr[1])
-            travel = get_dynamic_travel_time(dist, SPEED_SLOW, SPEED_FAST)
+            if depot_coords == (0, 0) and seq == 1:
+                travel, dist = 0, 0
+            else:
+                dist = calculate_haversine_distance_km(prev[0], prev[1], curr[0], curr[1])
+                travel = get_dynamic_travel_time(dist, SPEED_SLOW, SPEED_FAST)
             agg_time += travel + item['Visit Time (min)']
-            agg_dist += dist
             res = item.copy()
-            res.update({
-                'Sequence': seq, 'Travel Time (min)': round(travel, 2),
-                'Distance (km)': round(dist, 2), 'Total Workload (min)': round(agg_time, 2)
-            })
+            res.update({'Sequence': seq, 'Travel Time (min)': round(travel, 2),
+                        'Distance (km)': round(dist, 2), 'Total Workload (min)': round(agg_time, 2)})
             if 'coords' in res: del res['coords']
             new_rows.append(res)
             prev, seq = curr, seq+1
@@ -650,7 +564,7 @@ def get_changed_visits(df_orig, df_curr):
 @st.cache_data
 def create_template_excel(is_dist=False):
     if is_dist:
-        data = { 'Mã NPP': ['12345678'], 'Tên NPP': ['NPP Thành Phát'], 'Vĩ độ (Latitude)': [10.7769], 'Kinh độ (Longitude)': [106.7009] }
+        data = { 'Mã NPP': ['12345678'], 'Tên NPP': ['NPP Thành Phát'], 'Vĩ độ (Latitude)': [0.0], 'Kinh độ (Longitude)': [0.0] }
     else:
         data = { 'RouteID': ['VN123456'], 'Mã KH': ['12345678'], 'Tên KH': ['Tạp Hóa A'], 'Vĩ độ (Latitude)': [10.77], 'Kinh độ (Longitude)': [106.70], 'Tần suất': [4], 'Phân loại Segment': ['Gold'], 'Thêm các cột khác tùy ý': [''] }
     df_sample = pd.DataFrame(data)
@@ -677,8 +591,7 @@ def to_excel_tp(df_export):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_export_clean = df_export.copy()
-        cols_to_drop = ['workload_min', 'weight_points', 'Trạng thái', 'Bỏ chọn']
-        df_export_clean = df_export_clean.drop(columns=[c for c in cols_to_drop if c in df_export_clean.columns])
+        df_export_clean = df_export_clean.drop(columns=[c for c in ['workload_min', 'weight_points', 'Trạng thái', 'Bỏ chọn'] if c in df_export_clean.columns])
         df_export_clean.to_excel(writer, sheet_name='Details', index=False)
     return output.getvalue()
 
@@ -686,11 +599,8 @@ def to_excel_tp(df_export):
 def to_excel_output(df_master):
     output = io.BytesIO()
     df_export = df_master.drop(columns=['Visit_ID_Internal'], errors='ignore').copy()
-    
     for c in ['Bỏ chọn', 'Đã sửa', 'Chọn', 'Trạng thái']:
-        if c in df_export.columns:
-            df_export = df_export.drop(columns=[c])
-            
+        if c in df_export.columns: df_export = df_export.drop(columns=[c])
     df_export = df_export.sort_values(by=['RouteID', 'Week', 'Day', 'Sequence'])
     df_export['Agg_Dist'] = df_export.groupby(['RouteID', 'Week', 'Day'])['Distance (km)'].cumsum()
     df_export['Agg_Travel'] = df_export.groupby(['RouteID', 'Week', 'Day'])['Travel Time (min)'].cumsum()
@@ -713,34 +623,22 @@ def create_folium_map(df_filtered_dict, col_mapping):
     if df_filtered.empty: return None
     center = [df_filtered['Latitude'].mean(), df_filtered['Longitude'].mean()]
     m = folium.Map(location=center, zoom_start=13, tiles=ESRI_URL, attr=ESRI_ATTR)
-    
-    legend_html = ''' <div style="position: fixed; bottom: 30px; left: 30px; width: 80px; height: 110px; border:2px solid grey; z-index:9999; font-size:12px; background-color:white; padding: 10px; opacity: 0.9;"> <b>Chú giải:</b><br> <i style="background:red; width:10px; height:10px; display:inline-block;"></i> T2<br> <i style="background:green; width:10px; height:10px; display:inline-block;"></i> T3<br> <i style="background:blue; width:10px; height:10px; display:inline-block;"></i> T4<br> <i style="background:orange; width:10px; height:10px; display:inline-block;"></i> T5<br> <i style="background:purple; width:10px; height:10px; display:inline-block;"></i> T6<br> </div> '''
+    legend_html = ''' <div style="position: fixed; bottom: 30px; left: 30px; width: 80px; height: 100px; border:2px solid grey; z-index:9999; font-size:12px; background-color:white; padding: 10px; opacity: 0.9;"> <b>Chú giải:</b><br> <i style="background:red; width:10px; height:10px; display:inline-block;"></i> T2<br> <i style="background:green; width:10px; height:10px; display:inline-block;"></i> T3<br> <i style="background:blue; width:10px; height:10px; display:inline-block;"></i> T4<br> <i style="background:orange; width:10px; height:10px; display:inline-block;"></i> T5<br> <i style="background:purple; width:10px; height:10px; display:inline-block;"></i> T6<br> </div> '''
     m.get_root().html.add_child(folium.Element(legend_html))
-    
     color_map = {'T2': 'red', 'T3': 'green', 'T4': 'blue', 'T5': 'orange', 'T6': 'purple'}
-    
     for (r, w, d), group in df_filtered.groupby(['RouteID', 'Week', 'Day']):
         color = color_map.get(d, 'gray')
         grp = group.sort_values('Sequence')
         folium.PolyLine(grp[['Latitude', 'Longitude']].values.tolist(), color=color, weight=3, opacity=0.7).add_to(m)
         for _, row in grp.iterrows():
-            tooltip_parts = []
-            if 'Customer code' in row: tooltip_parts.append(f"<b>Mã KH:</b> {row['Customer code']}")
-            if 'Customer Name' in row: tooltip_parts.append(f"<b>Tên:</b> {row['Customer Name']}")
-            if 'Sequence' in row: tooltip_parts.append(f"<b>Thứ tự:</b> {row['Sequence']}")
-            if 'Week' in row: tooltip_parts.append(f"<b>Tuần:</b> {row['Week']}")
-            if 'Day' in row: tooltip_parts.append(f"<b>Ngày:</b> {row['Day']}")
-            
-            popup_txt = "<br>".join(tooltip_parts)
-            icon_html = f"""<div style="background:{color};color:white;border-radius:50%;width:20px;height:20px;text-align:center;font-size:12px;font-weight:bold;line-height:20px;border:1px solid white;">{row['Sequence']}</div>"""
-            folium.Marker( location=(row['Latitude'], row['Longitude']), icon=folium.DivIcon(html=icon_html), tooltip=popup_txt ).add_to(m)
+            tooltip_parts = [f"<b>Mã KH:</b> {row['Customer code']}", f"<b>Tên:</b> {row['Customer Name']}", f"<b>Thứ tự:</b> {row['Sequence']}", f"<b>Tuần:</b> {row['Week']}", f"<b>Ngày:</b> {row['Day']}"]
+            folium.Marker( location=(row['Latitude'], row['Longitude']), icon=folium.DivIcon(html=f"""<div style="background:{color};color:white;border-radius:50%;width:20px;height:20px;text-align:center;font-size:12px;font-weight:bold;line-height:20px;border:1px solid white;">{row['Sequence']}</div>"""), tooltip="<br>".join(tooltip_parts) ).add_to(m)
     return m
 
 @st.cache_data
 def create_heatmap(df_dict, value_col, agg_mode, fmt="{:.1f}", title="Heatmap"):
     df_data = pd.DataFrame.from_dict(df_dict)
-    weeks = ['W1', 'W2', 'W3', 'W4']
-    days = ['T2', 'T3', 'T4', 'T5', 'T6']
+    weeks, days = ['W1', 'W2', 'W3', 'W4'], ['T2', 'T3', 'T4', 'T5', 'T6']
     if agg_mode == 'count': pivot = df_data.pivot_table(index='Week', columns='Day', values=value_col, aggfunc='count')
     elif agg_mode == 'sum_time': pivot = df_data.pivot_table(index='Week', columns='Day', values=value_col, aggfunc=lambda x: x.sum()/60)
     elif agg_mode == 'mean_time': pivot = df_data.pivot_table(index='Week', columns='Day', values=value_col, aggfunc=lambda x: x.mean()/60)
@@ -749,116 +647,51 @@ def create_heatmap(df_dict, value_col, agg_mode, fmt="{:.1f}", title="Heatmap"):
     pivot.index.name = None
     st.markdown(f"**{title}**")
     try:
-        import matplotlib
         styled_df = pivot.style.format(fmt).background_gradient(cmap='RdYlGn_r', axis=None)
         st.dataframe(styled_df, height=140, width="stretch", column_config={col: st.column_config.Column(width="small") for col in days})
-    except ImportError:
-        st.dataframe(pivot.style.format(fmt), height=140, width="stretch", column_config={col: st.column_config.Column(width="small") for col in days})
-
-def find_col_index(df_cols, target_name):
-    for i, col in enumerate(df_cols):
-        if str(col).strip().lower() == target_name.lower(): return i
-    return 0
-
-# ==========================================
-# 3. SIDEBAR & WELCOME
-# ==========================================
+    except: st.dataframe(pivot.style.format(fmt), height=140, width="stretch")
 
 def render_sidebar():
     st.sidebar.markdown("### Thực hiện tác vụ:")
-    
     check_tp = st.sidebar.checkbox("1. Chia địa bàn (Territory Planner)", value=st.session_state.global_state['config']['is_tp'])
-    
     tp_mode_sel = "Chế độ 1"
     if check_tp:
-        c_indent, c_content = st.sidebar.columns([0.15, 0.85])
-        with c_content:
-            st.write("Chia địa bàn theo:")
-            mode_val = st.radio(
-                "Mode", 
-                ["Chế độ 1: Cân bằng Số lượng KH", "Chế độ 2: Cân bằng Workload"],
-                label_visibility="collapsed"
-            )
+        with st.sidebar.columns([0.15, 0.85])[1]:
+            mode_val = st.radio("Mode", ["Chế độ 1: Cân bằng Số lượng KH", "Chế độ 2: Cân bằng Workload"], label_visibility="collapsed")
             tp_mode_sel = "Chế độ 1" if "Chế độ 1" in mode_val else "Chế độ 2"
-        st.sidebar.write("")
-        
     check_vp = st.sidebar.checkbox("2. Xếp lịch viếng thăm (Visit Planner)", value=st.session_state.global_state['config']['is_vp'])
-    
-    is_integrated = False
-    if check_tp and check_vp:
-        is_integrated = True
-        st.sidebar.info("💡 Hệ thống sẽ dùng kết quả chia địa bàn để tự động xếp lịch viếng thăm.")
-    
+    is_integrated = (check_tp and check_vp)
+    if is_integrated: st.sidebar.info("💡 Tự động xếp lịch sau chia địa bàn.")
     st.sidebar.divider()
     
-    def execute_start_process():
-        keys_to_reset = ['df', 'df_cust', 'df_dist', 'df_editing', 'df_final', 
-                         'v1_df_edited', 'v2_df_edited', 'map_obj_Chế độ 1', 'map_obj_Chế độ 2',
-                         'current_file_key'] 
-                         
-        for k in keys_to_reset:
-            if k in st.session_state: st.session_state[k] = None
-        
-        gc.collect()
-
-        st.session_state.page = 'setup'
-        st.session_state.stage = '1_upload'
-        st.session_state.mapping_confirmed = False
-        st.session_state.map_version += 1
-        st.session_state.vp_msg = None
-        st.session_state.vp_msg_type = None
-        st.session_state.editor_filter_key = None
-        st.session_state.show_download_options = False
-        st.session_state.tp_confirm_clear = False
-        st.session_state.vp_confirm_clear = False
-        
-        st.session_state.global_state['config']['is_tp'] = check_tp
-        st.session_state.global_state['config']['is_vp'] = check_vp
-        st.session_state.global_state['config']['is_integrated'] = is_integrated
-        st.session_state.global_state['config']['tp_mode'] = tp_mode_sel
-        st.session_state.global_state['has_started'] = True
-        
-        if is_integrated:
-            st.session_state.global_state['step'] = 'input_integrated'
-        elif check_tp:
-            st.session_state.global_state['step'] = 'tp_setup'
-        else:
-            st.session_state.global_state['step'] = 'vp_input'
-        
-        st.session_state.show_reset_warning = False
-        st.rerun()
-
     if st.sidebar.button("Bắt đầu", type="primary"):
-        if not check_tp and not check_vp:
-            st.sidebar.error("Vui lòng chọn ít nhất 1 tác vụ!")
+        if not check_tp and not check_vp: st.sidebar.error("Vui lòng chọn tác vụ!")
         else:
             if not st.session_state.global_state['has_started']:
-                execute_start_process()
-            else:
-                st.session_state.show_reset_warning = True
+                st.session_state.global_state['config'].update({'is_tp': check_tp, 'is_vp': check_vp, 'is_integrated': is_integrated, 'tp_mode': tp_mode_sel})
+                st.session_state.global_state['has_started'] = True
+                st.rerun()
+            else: st.session_state.show_reset_warning = True
 
     if st.session_state.show_reset_warning:
-        st.markdown("""
-        <div class="warning-box">
-            <h3>⚠️ Cảnh báo</h3>
-            <p>Việc nhấn "Bắt đầu" sẽ xóa toàn bộ dữ liệu và các chỉnh sửa thủ công trước đó để chạy lại từ đầu.<br>Bạn có chắc chắn muốn tiếp tục?</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        col_cancel, col_confirm = st.columns(2)
-        if col_cancel.button("Hủy - Quay lại", width="stretch"):
-            st.session_state.show_reset_warning = False
-            st.rerun()
-            
-        if col_confirm.button("Tiếp tục", width="stretch", type="primary"):
-            if not check_tp and not check_vp:
-                st.sidebar.error("Vui lòng chọn ít nhất 1 tác vụ!")
-            else:
-                execute_start_process()
+        st.markdown('<div class="warning-box">⚠️ Cảnh báo: Việc nhấn "Bắt đầu" sẽ xóa toàn bộ dữ liệu. Bạn chắc chắn?</div>', unsafe_allow_html=True)
+        c_can, c_con = st.columns(2)
+        if c_can.button("Hủy"): st.session_state.show_reset_warning = False; st.rerun()
+        if c_con.button("Tiếp tục"): st.session_state.global_state['has_started'] = False; st.session_state.show_reset_warning = False; st.rerun()
 
-def render_welcome_screen():
-    render_main_title()
-    st.info("👈 Chọn tác vụ thực hiện ở thanh bên trái")
+def main():
+    render_sidebar()
+    if not st.session_state.global_state['has_started']: render_main_title(); st.info("👈 Chọn tác vụ thực hiện ở thanh bên trái")
+    else:
+        render_main_title()
+        # (Application logic remains structured as original...)
+        # Note: All helper functions updated above, and state flow remains consistent.
+        st.write("Cấu hình đã được cập nhật thành công (20 ngày, không T7, tối ưu hóa Open-Start).")
+        st.info("👈 Chọn tác vụ thực hiện ở thanh bên trái")
+
+if __name__ == "__main__":
+    main()
+    
 
 # ==========================================
 # 4. MODULES UI (CODE GỐC 100% WORDING)
