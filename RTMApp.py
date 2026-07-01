@@ -414,14 +414,40 @@ def collapse_to_original(df_exploded, original_df):
     df_result['Assigned_Day'].fillna('Mon', inplace=True)
     return df_result
 
+def is_ghost_depot(coords, eps=1e-6):
+    """
+    Trả về True nếu tọa độ depot là (0, 0) -> "Ghost Depot".
+    Dùng làm cờ hiệu (sentinel) khi KHÔNG có NPP/điểm xuất phát thật,
+    cho phép TSP solver tự do chọn điểm bắt đầu & kết thúc tối ưu nhất
+    (Open Path TSP) thay vì bị ép quay về một tọa độ NPP cụ thể.
+    Bọc trong try/except để an toàn với None/NaN/kiểu dữ liệu lạ.
+    """
+    try:
+        lat, lon = coords[0], coords[1]
+        if lat is None or lon is None: return False
+        if isinstance(lat, float) and math.isnan(lat): return False
+        if isinstance(lon, float) and math.isnan(lon): return False
+        return abs(float(lat)) < eps and abs(float(lon)) < eps
+    except (TypeError, IndexError, ValueError):
+        return False
+
 def build_time_matrix_haversine(locations, speed_slow, speed_fast):
     size = len(locations)
     matrix = np.zeros((size, size), dtype=int)
     lats = np.array([loc[0] for loc in locations])
     lons = np.array([loc[1] for loc in locations])
+
+    # GHOST DEPOT (Open Start/End): nếu node depot (index 0) là (0,0),
+    # toàn bộ chi phí đi/đến depot = 0 -> solver tự chọn điểm bắt đầu
+    # và kết thúc tối ưu nhất trong số các KH, thay vì bị neo vào depot ảo.
+    ghost_depot = is_ghost_depot(locations[0]) if size > 0 else False
+
     for i in range(size):
         for j in range(size):
             if i == j: continue
+            if ghost_depot and (i == 0 or j == 0):
+                matrix[i][j] = 0
+                continue
             dist_km = calculate_haversine_distance_km(lats[i], lons[i], lats[j], lons[j])
             speed = speed_slow if dist_km < 2.0 else speed_fast
             matrix[i][j] = int((dist_km / speed) * 3600)
@@ -576,10 +602,16 @@ def run_master_scheduler(df_cust, depot_coords, selected_route_ids, route_config
                 mode, end_c = ('open', end_cfg) if end_cfg else ('closed', None)
                 ordered = solve_tsp_final(tsp_in, depot_coords, SPEED_SLOW, SPEED_FAST, mode, end_c)
                 prev, seq, agg_time, agg_dist = depot_coords, 1, 0, 0
+                ghost_depot = is_ghost_depot(depot_coords)
                 for item in ordered:
                     curr = item['coords']
-                    dist = calculate_haversine_distance_km(prev[0], prev[1], curr[0], curr[1])
-                    travel = get_dynamic_travel_time(dist, SPEED_SLOW, SPEED_FAST)
+                    if seq == 1 and ghost_depot:
+                        # Depot ảo (0,0): không tính quãng đường/thời gian di chuyển
+                        # từ depot -> KH đầu tiên, vì depot không có thật.
+                        dist, travel = 0.0, 0.0
+                    else:
+                        dist = calculate_haversine_distance_km(prev[0], prev[1], curr[0], curr[1])
+                        travel = get_dynamic_travel_time(dist, SPEED_SLOW, SPEED_FAST)
                     agg_time += travel + item['Visit Time (min)']
                     agg_dist += dist
                     res = item.copy()
@@ -623,10 +655,16 @@ def recalculate_routes(df_edited, depot_coords, route_config, speed_config, impa
             ordered = [row.to_dict() for _, row in group.sort_values('Sequence').iterrows()]
             for item in ordered: item['coords'] = (item['Latitude'], item['Longitude'])
         prev, seq, agg_time, agg_dist = depot_coords, 1, 0, 0
+        ghost_depot = is_ghost_depot(depot_coords)
         for item in ordered:
             curr = item['coords']
-            dist = calculate_haversine_distance_km(prev[0], prev[1], curr[0], curr[1])
-            travel = get_dynamic_travel_time(dist, SPEED_SLOW, SPEED_FAST)
+            if seq == 1 and ghost_depot:
+                # Depot ảo (0,0): không tính quãng đường/thời gian di chuyển
+                # từ depot -> KH đầu tiên, vì depot không có thật.
+                dist, travel = 0.0, 0.0
+            else:
+                dist = calculate_haversine_distance_km(prev[0], prev[1], curr[0], curr[1])
+                travel = get_dynamic_travel_time(dist, SPEED_SLOW, SPEED_FAST)
             agg_time += travel + item['Visit Time (min)']
             agg_dist += dist
             res = item.copy()
