@@ -681,12 +681,28 @@ def render_sidebar():
 
 def main():
     render_sidebar()
-    if not st.session_state.global_state['has_started']: render_main_title(); st.info("👈 Chọn tác vụ thực hiện ở thanh bên trái")
+    step = st.session_state.global_state['step']
+    config = st.session_state.global_state['config']
+    
+    if not st.session_state.global_state['has_started']:
+        render_welcome_screen()
     else:
         render_main_title()
-        # (Application logic remains structured as original...)
-        # Note: All helper functions updated above, and state flow remains consistent.
-        st.write("Cấu hình đã được cập nhật thành công (20 ngày, không T7, tối ưu hóa Open-Start).")
-
-if __name__ == "__main__":
-    main()
+        
+        # --- LUỒNG XỬ LÝ ĐẦY ĐỦ ---
+        # 1. Territory Planner Only
+        if config['is_tp'] and not config['is_integrated']:
+            render_tp_ui(is_integrated=False)
+        
+        # 2. Visit Planner Only
+        elif config['is_vp'] and not config['is_integrated']:
+            render_vp_ui(is_integrated=False)
+                
+        # 3. Integrated (Cả hai)
+        elif config['is_integrated']:
+            if step == 'input_integrated':
+                render_vp_ui(is_integrated=True)
+            elif step in ['tp_setup', 'tp_result_integrated']:
+                render_tp_ui(is_integrated=True)
+            elif step in ['vp_process', 'vp_result']:
+                render_vp_ui(is_integrated=True)
