@@ -706,3 +706,5 @@ def main():
                 render_tp_ui(is_integrated=True)
             elif step in ['vp_process', 'vp_result']:
                 render_vp_ui(is_integrated=True)
+if __name__ == "__main__":
+    main()
